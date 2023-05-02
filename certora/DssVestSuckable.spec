@@ -1,11 +1,11 @@
 // DssVestSuckable.spec
 
-// certoraRun src/DssVest.sol:DssVestSuckable certora/ChainLog.sol certora/Vat.sol certora/DaiJoin.sol certora/Dai.sol --link DssVestSuckable:chainlog=ChainLog DssVestSuckable:vat=Vat DssVestSuckable:daiJoin=DaiJoin DaiJoin:vat=Vat DaiJoin:dai=Dai --verify DssVestSuckable:certora/DssVestSuckable.spec --rule_sanity
+// certoraRun src/DssVest.sol:DssVestSuckable certora/ChainLog.sol certora/Vat.sol certora/StblJoin.sol certora/StableCoin.sol --link DssVestSuckable:chainlog=ChainLog DssVestSuckable:vat=Vat DssVestSuckable:stblJoin=StblJoin StblJoin:vat=Vat StblJoin:stbl=StableCoin --verify DssVestSuckable:certora/DssVestSuckable.spec --rule_sanity
 
 using ChainLog as chainlog
-using DaiJoin as daiJoin
+using StblJoin as stblJoin
 using Vat as vat
-using Dai as dai
+using StblJoin as stbl
 
 methods {
     TWENTY_YEARS() returns (uint256) envfree
@@ -23,19 +23,19 @@ methods {
     rxd(uint256) returns (uint256) envfree
     valid(uint256) returns (bool) envfree
     chainlog.getAddress(bytes32) returns (address)
-    daiJoin.vat() returns (address) envfree
-    daiJoin.dai() returns (address) envfree
-    daiJoin.live() returns (uint256) envfree
+    stblJoin.vat() returns (address) envfree
+    stblJoin.stbl() returns (address) envfree
+    stblJoin.live() returns (uint256) envfree
     vat.wards(address) returns (uint256) envfree
     vat.can(address, address) returns (uint256) envfree
-    vat.dai(address) returns (uint256) envfree
+    vat.stbl(address) returns (uint256) envfree
     vat.sin(address) returns (uint256) envfree
     vat.debt() returns (uint256) envfree
     vat.vice() returns (uint256) envfree
     vat.live() returns (uint256) envfree
-    dai.wards(address) returns (uint256) envfree
-    dai.totalSupply() returns (uint256) envfree
-    dai.balanceOf(address) returns (uint256) envfree
+    stbl.wards(address) returns (uint256) envfree
+    stbl.totalSupply() returns (uint256) envfree
+    stbl.balanceOf(address) returns (uint256) envfree
 }
 
 definition max_uint48() returns uint256 = 2^48 - 1;
@@ -113,7 +113,7 @@ rule TWENTY_YEARS() {
 rule TWENTY_YEARS_revert(uint256 _id) {
     TWENTY_YEARS@withrevert();
 
-    // The only revert path for the award getters is sending ETH.
+    // The only revert path for the award getters is sending COIN.
     // However as these getters are defined as envfree, it is already being checked
     // that are not payable by Certora prover, then not following that revertion
     // path in this rule. That's why it's ignored.
@@ -141,7 +141,7 @@ rule rely_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = ward != 1;
 
-    assert(revert1 => lastReverted, "Sending ETH did not revert");
+    assert(revert1 => lastReverted, "Sending COIN did not revert");
     assert(revert2 => lastReverted, "Lack of auth did not revert");
 
     assert(lastReverted => revert1 || revert2, "Revert rules are not covering all the cases");
@@ -167,7 +167,7 @@ rule deny_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = ward != 1;
 
-    assert(revert1 => lastReverted, "Sending ETH did not revert");
+    assert(revert1 => lastReverted, "Sending COIN did not revert");
     assert(revert2 => lastReverted, "Lack of auth did not revert");
 
     assert(lastReverted => revert1 || revert2, "Revert rules are not covering all the cases");
@@ -200,7 +200,7 @@ rule award_getters(uint256 _id) {
 // Verify revert rules on award getters
 rule award_getters_revert(uint256 _id) {
 
-    // The only revert path for the award getters is sending ETH.
+    // The only revert path for the award getters is sending COIN.
     // However as these getters are defined as envfree, it is already being checked
     // that are not payable by Certora prover, then not following that revertion
     // path in this rule. That's why it's ignored.
@@ -254,7 +254,7 @@ rule file_revert(bytes32 what, uint256 data) {
     bool revert3 = locked != 0;
     bool revert4 = what != 0x6361700000000000000000000000000000000000000000000000000000000000; // what != "cap"
 
-    assert(revert1 => lastReverted, "Sending ETH did not revert");
+    assert(revert1 => lastReverted, "Sending COIN did not revert");
     assert(revert2 => lastReverted, "Lack of auth did not revert");
     assert(revert3 => lastReverted, "Locked did not revert");
     assert(revert4 => lastReverted, "Unrecognized file param did not revert");
@@ -321,7 +321,7 @@ rule create_revert(address _usr, uint256 _tot, uint256 _bgn, uint256 _tau, uint2
     bool revert17 = fin > max_uint48();
     bool revert18 = _tot > max_uint128;
 
-    assert(revert1  => lastReverted, "Sending ETH did not revert");
+    assert(revert1  => lastReverted, "Sending COIN did not revert");
     assert(revert2  => lastReverted, "Lack of auth did not revert");
     assert(revert3  => lastReverted, "Locked did not revert");
     assert(revert4  => lastReverted, "Invalid user did not revert");
@@ -353,8 +353,8 @@ rule create_revert(address _usr, uint256 _tot, uint256 _bgn, uint256 _tau, uint2
 rule vest(uint256 _id) {
     env e;
 
-    require(vat == daiJoin.vat());
-    require(dai == daiJoin.dai());
+    require(vat == stblJoin.vat());
+    require(stbl == stblJoin.stbl());
 
     address usr; uint48 bgn; uint48 clf; uint48 fin; address mgr; uint8 res; uint128 tot; uint128 rxd;
     usr, bgn, clf, fin, mgr, res, tot, rxd = awards(_id);
@@ -376,16 +376,16 @@ rule vest(uint256 _id) {
         ? 0
         : accruedAmt - rxd;
 
-    uint256 balanceBefore = dai.balanceOf(usr);
-    uint256 supplyBefore = dai.totalSupply();
+    uint256 balanceBefore = stbl.balanceOf(usr);
+    uint256 supplyBefore = stbl.totalSupply();
 
     vest(e, _id);
 
     address usr2; uint48 bgn2; uint48 clf2; uint48 fin2; address mgr2; uint8 res2; uint128 tot2; uint128 rxd2;
     usr2, bgn2, clf2, fin2, mgr2, res2, tot2, rxd2 = awards(_id);
 
-    uint256 balanceAfter = dai.balanceOf(usr);
-    uint256 supplyAfter = dai.totalSupply();
+    uint256 balanceAfter = stbl.balanceOf(usr);
+    uint256 supplyAfter = stbl.totalSupply();
 
     assert(usr2 == usr, "usr changed");
     assert(bgn2 == bgn, "bgn changed");
@@ -411,28 +411,28 @@ rule vest(uint256 _id) {
 rule vest_revert(uint256 _id) {
     env e;
 
-    require(vat == daiJoin.vat());
-    require(dai == daiJoin.dai());
+    require(vat == stblJoin.vat());
+    require(stbl == stblJoin.stbl());
 
     requireInvariant clfGreaterOrEqualBgn(_id);
     requireInvariant finGreaterOrEqualClf(_id);
 
     address usr; uint48 bgn; uint48 clf; uint48 fin; address mgr; uint8 res; uint128 tot; uint128 rxd;
     usr, bgn, clf, fin, mgr, res, tot, rxd = awards(_id);
-    uint256 usrBalance = dai.balanceOf(usr);
-    uint256 supply = dai.totalSupply();
+    uint256 usrBalance = stbl.balanceOf(usr);
+    uint256 supply = stbl.totalSupply();
     uint256 locked = lockedGhost();
     uint256 vatLive = vat.live();
     address vow = chainlog.getAddress(e, 0x4d43445f564f5700000000000000000000000000000000000000000000000000);
-    uint256 daiJoinLive = daiJoin.live();
+    uint256 stblJoinLive = stblJoin.live();
     uint256 wardVat = vat.wards(currentContract);
-    uint256 canVestDaiJoin = vat.can(currentContract, daiJoin);
-    uint256 wardDai = dai.wards(daiJoin);
+    uint256 canVestStblJoin = vat.can(currentContract, stblJoin);
+    uint256 wardStbl = stbl.wards(stblJoin);
     uint256 sinVow = vat.sin(vow);
-    uint256 vatDaiVest = vat.dai(currentContract);
+    uint256 vatStblVest = vat.stbl(currentContract);
     uint256 vice = vat.vice();
     uint256 debt = vat.debt();
-    uint256 vatDaiDaiJoin = vat.dai(daiJoin);
+    uint256 vatStblStblJoin = vat.stbl(stblJoin);
 
     uint256 accruedAmt =
         e.block.timestamp < bgn
@@ -465,17 +465,17 @@ rule vest_revert(uint256 _id) {
     bool revert11 = unpaidAmtRad > max_uint256;
     bool revert12 = wardVat != 1;
     bool revert13 = sinVow + unpaidAmtRad > max_uint256;
-    bool revert14 = vatDaiVest + unpaidAmtRad > max_uint256;
+    bool revert14 = vatStblVest + unpaidAmtRad > max_uint256;
     bool revert15 = vice + unpaidAmtRad > max_uint256;
     bool revert16 = debt + unpaidAmtRad > max_uint256;
-    bool revert17 = daiJoinLive != 1;
-    bool revert18 = currentContract != daiJoin && canVestDaiJoin != 1;
-    bool revert19 = vatDaiDaiJoin + unpaidAmtRad > max_uint256;
-    bool revert20 = wardDai != 1;
+    bool revert17 = stblJoinLive != 1;
+    bool revert18 = currentContract != stblJoin && canVestStblJoin != 1;
+    bool revert19 = vatStblStblJoin + unpaidAmtRad > max_uint256;
+    bool revert20 = wardStbl != 1;
     bool revert21 = usrBalance + unpaidAmt > max_uint256;
     bool revert22 = supply + unpaidAmt > max_uint256;
 
-    assert(revert1  => lastReverted, "Sending ETH did not revert");
+    assert(revert1  => lastReverted, "Sending COIN did not revert");
     assert(revert2  => lastReverted, "Locked did not revert");
     assert(revert3  => lastReverted, "Invalid award did not revert");
     assert(revert4  => lastReverted, "Only user can claim did not revert");
@@ -488,13 +488,13 @@ rule vest_revert(uint256 _id) {
     assert(revert11 => lastReverted, "Overflow RAY * unpaidAmt did not revert");
     assert(revert12 => lastReverted, "Vat lack of auth did not revert");
     assert(revert13 => lastReverted, "Overflow sin + rad did not revert");
-    assert(revert14 => lastReverted, "Overflow dai + rad did not revert");
+    assert(revert14 => lastReverted, "Overflow stbl + rad did not revert");
     assert(revert15 => lastReverted, "Overflow vice + rad did not revert");
     assert(revert16 => lastReverted, "Overflow debt + rad did not revert");
-    assert(revert17 => lastReverted, "Not live daiJoin did not revert");
+    assert(revert17 => lastReverted, "Not live stblJoin did not revert");
     assert(revert18 => lastReverted, "The function wish did not revert");
     assert(revert19 => lastReverted, "Overflow dst + rad did not revert");
-    assert(revert20 => lastReverted, "Lack of dai auth on daiJoin did not revert");
+    assert(revert20 => lastReverted, "Lack of stbl auth on stblJoin did not revert");
     assert(revert21 => lastReverted, "Overflow usr balance did not revert");
     assert(revert22 => lastReverted, "Overflow totalSupply did not revert");
 
@@ -513,8 +513,8 @@ rule vest_revert(uint256 _id) {
 rule vest_amt(uint256 _id, uint256 _maxAmt) {
     env e;
 
-    require(vat == daiJoin.vat());
-    require(dai == daiJoin.dai());
+    require(vat == stblJoin.vat());
+    require(stbl == stblJoin.stbl());
 
     address usr; uint48 bgn; uint48 clf; uint48 fin; address mgr; uint8 res; uint128 tot; uint128 rxd;
     usr, bgn, clf, fin, mgr, res, tot, rxd = awards(_id);
@@ -538,16 +538,16 @@ rule vest_amt(uint256 _id, uint256 _maxAmt) {
 
     uint256 amt = _maxAmt > unpaidAmt ? unpaidAmt : _maxAmt;
 
-    uint256 balanceBefore = dai.balanceOf(usr);
-    uint256 supplyBefore = dai.totalSupply();
+    uint256 balanceBefore = stbl.balanceOf(usr);
+    uint256 supplyBefore = stbl.totalSupply();
 
     vest(e, _id, _maxAmt);
 
     address usr2; uint48 bgn2; uint48 clf2; uint48 fin2; address mgr2; uint8 res2; uint128 tot2; uint128 rxd2;
     usr2, bgn2, clf2, fin2, mgr2, res2, tot2, rxd2 = awards(_id);
 
-    uint256 balanceAfter = dai.balanceOf(usr);
-    uint256 supplyAfter = dai.totalSupply();
+    uint256 balanceAfter = stbl.balanceOf(usr);
+    uint256 supplyAfter = stbl.totalSupply();
 
     assert(usr2 == usr, "usr changed");
     assert(bgn2 == bgn, "bgn changed");
@@ -572,28 +572,28 @@ rule vest_amt(uint256 _id, uint256 _maxAmt) {
 rule vest_amt_revert(uint256 _id, uint256 _maxAmt) {
     env e;
 
-    require(vat == daiJoin.vat());
-    require(dai == daiJoin.dai());
+    require(vat == stblJoin.vat());
+    require(stbl == stblJoin.stbl());
 
     requireInvariant clfGreaterOrEqualBgn(_id);
     requireInvariant finGreaterOrEqualClf(_id);
 
     address usr; uint48 bgn; uint48 clf; uint48 fin; address mgr; uint8 res; uint128 tot; uint128 rxd;
     usr, bgn, clf, fin, mgr, res, tot, rxd = awards(_id);
-    uint256 usrBalance = dai.balanceOf(usr);
-    uint256 supply = dai.totalSupply();
+    uint256 usrBalance = stbl.balanceOf(usr);
+    uint256 supply = stbl.totalSupply();
     uint256 locked = lockedGhost();
     uint256 vatLive = vat.live();
     address vow = chainlog.getAddress(e, 0x4d43445f564f5700000000000000000000000000000000000000000000000000);
-    uint256 daiJoinLive = daiJoin.live();
+    uint256 stblJoinLive = stblJoin.live();
     uint256 wardVat = vat.wards(currentContract);
-    uint256 canVestDaiJoin = vat.can(currentContract, daiJoin);
-    uint256 wardDai = dai.wards(daiJoin);
+    uint256 canVestStblJoin = vat.can(currentContract, stblJoin);
+    uint256 wardStbl = stbl.wards(stblJoin);
     uint256 sinVow = vat.sin(vow);
-    uint256 vatDaiVest = vat.dai(currentContract);
+    uint256 vatStblVest = vat.stbl(currentContract);
     uint256 vice = vat.vice();
     uint256 debt = vat.debt();
-    uint256 vatDaiDaiJoin = vat.dai(daiJoin);
+    uint256 vatStblStblJoin = vat.stbl(stblJoin);
 
     uint256 accruedAmt =
         e.block.timestamp < bgn
@@ -628,17 +628,17 @@ rule vest_amt_revert(uint256 _id, uint256 _maxAmt) {
     bool revert11 = amtRad > max_uint256;
     bool revert12 = wardVat != 1;
     bool revert13 = sinVow + amtRad > max_uint256;
-    bool revert14 = vatDaiVest + amtRad > max_uint256;
+    bool revert14 = vatStblVest + amtRad > max_uint256;
     bool revert15 = vice + amtRad > max_uint256;
     bool revert16 = debt + amtRad > max_uint256;
-    bool revert17 = daiJoinLive != 1;
-    bool revert18 = currentContract != daiJoin && canVestDaiJoin != 1;
-    bool revert19 = vatDaiDaiJoin + amtRad > max_uint256;
-    bool revert20 = wardDai != 1;
+    bool revert17 = stblJoinLive != 1;
+    bool revert18 = currentContract != stblJoin && canVestStblJoin != 1;
+    bool revert19 = vatStblStblJoin + amtRad > max_uint256;
+    bool revert20 = wardStbl != 1;
     bool revert21 = usrBalance + amt > max_uint256;
     bool revert22 = supply + amt > max_uint256;
 
-    assert(revert1  => lastReverted, "Sending ETH did not revert");
+    assert(revert1  => lastReverted, "Sending COIN did not revert");
     assert(revert2  => lastReverted, "Locked did not revert");
     assert(revert3  => lastReverted, "Invalid award did not revert");
     assert(revert4  => lastReverted, "Only user can claim did not revert");
@@ -651,13 +651,13 @@ rule vest_amt_revert(uint256 _id, uint256 _maxAmt) {
     assert(revert11 => lastReverted, "Overflow RAY * amt did not revert");
     assert(revert12 => lastReverted, "Lack of vat auth on suckable did not revert");
     assert(revert13 => lastReverted, "Overflow sin + rad did not revert");
-    assert(revert14 => lastReverted, "Overflow dai + rad did not revert");
+    assert(revert14 => lastReverted, "Overflow stbl + rad did not revert");
     assert(revert15 => lastReverted, "Overflow vice + rad did not revert");
     assert(revert16 => lastReverted, "Overflow debt + rad did not revert");
-    assert(revert17 => lastReverted, "Not live daiJoin did not revert");
+    assert(revert17 => lastReverted, "Not live stblJoin did not revert");
     assert(revert18 => lastReverted, "The function wish did not revert");
     assert(revert19 => lastReverted, "Overflow dst + rad did not revert");
-    assert(revert20 => lastReverted, "Lack of dai auth on daiJoin did not revert");
+    assert(revert20 => lastReverted, "Lack of stbl auth on stblJoin did not revert");
     assert(revert21 => lastReverted, "Overflow usr balance did not revert");
     assert(revert22 => lastReverted, "Overflow totalSupply did not revert");
 
@@ -716,7 +716,7 @@ rule accrued_revert(uint256 _id) {
     bool revert3 = e.block.timestamp >= clf && e.block.timestamp >= bgn && e.block.timestamp < fin && tot * (e.block.timestamp - bgn) > max_uint256;
     bool revert4 = e.block.timestamp >= clf && e.block.timestamp >= bgn && e.block.timestamp < fin && fin == bgn;
 
-    assert(revert1 => lastReverted, "Sending ETH did not revert");
+    assert(revert1 => lastReverted, "Sending COIN did not revert");
     assert(revert2 => lastReverted, "Invalid award did not revert");
     assert(revert3 => lastReverted, "Overflow tot * time passed did not revert");
     assert(revert4 => lastReverted, "Division by zero did not revert");
@@ -771,7 +771,7 @@ rule unpaid_revert(uint256 _id) {
     bool revert4 = e.block.timestamp >= clf && e.block.timestamp >= bgn && e.block.timestamp < fin && fin == bgn;
     bool revert5 = e.block.timestamp >= clf && accruedAmt < rxd;
 
-    assert(revert1 => lastReverted, "Sending ETH did not revert");
+    assert(revert1 => lastReverted, "Sending COIN did not revert");
     assert(revert2 => lastReverted, "Invalid award did not revert");
     assert(revert3 => lastReverted, "Overflow tot * time passed did not revert");
     assert(revert4 => lastReverted, "Division by zero did not revert");
@@ -805,7 +805,7 @@ rule restrict_revert(uint256 _id) {
     bool revert3 = _usr == 0;
     bool revert4 = ward != 1 && _usr != e.msg.sender;
 
-    assert(revert1 => lastReverted, "Sending ETH did not revert");
+    assert(revert1 => lastReverted, "Sending COIN did not revert");
     assert(revert2 => lastReverted, "Locked did not revert");
     assert(revert3 => lastReverted, "Invalid award did not revert");
     assert(revert4 => lastReverted, "Only governance or owner can restrict did not revert");
@@ -837,7 +837,7 @@ rule unrestrict_revert(uint256 _id) {
     bool revert3 = _usr == 0;
     bool revert4 = ward != 1 && _usr != e.msg.sender;
 
-    assert(revert1 => lastReverted, "Sending ETH did not revert");
+    assert(revert1 => lastReverted, "Sending COIN did not revert");
     assert(revert2 => lastReverted, "Locked did not revert");
     assert(revert3 => lastReverted, "Invalid award did not revert");
     assert(revert4 => lastReverted, "Only governance or owner can unrestrict did not revert");
@@ -924,7 +924,7 @@ rule yank_revert(uint256 _id) {
     bool revert8 = e.block.timestamp < fin && e.block.timestamp >= bgn && e.block.timestamp >= clf && accruedAmt < rxd;
     bool revert9 = e.block.timestamp < fin && e.block.timestamp >= bgn && e.block.timestamp >= clf && rxd + unpaidAmt > max_uint128;
 
-    assert(revert1 => lastReverted, "Sending ETH did not revert");
+    assert(revert1 => lastReverted, "Sending COIN did not revert");
     assert(revert2 => lastReverted, "Locked did not revert");
     assert(revert3 => lastReverted, "Not authorized did not revert");
     assert(revert4 => lastReverted, "Invalid award did not revert");
@@ -1021,7 +1021,7 @@ rule yank_end_revert(uint256 _id, uint256 _end) {
     bool revert8 = _end2 < fin && _end2 >= bgn && _end2 >= clf && accruedAmt < rxd;
     bool revert9 = _end2 < fin && _end2 >= bgn && _end2 >= clf && rxd + unpaidAmt > max_uint128;
 
-    assert(revert1 => lastReverted, "Sending ETH did not revert");
+    assert(revert1 => lastReverted, "Sending COIN did not revert");
     assert(revert2 => lastReverted, "Locked did not revert");
     assert(revert3 => lastReverted, "Not authorized did not revert");
     assert(revert4 => lastReverted, "Invalid award did not revert");
@@ -1060,7 +1060,7 @@ rule move_revert(uint256 _id, address _dst) {
     bool revert3 = _usr != e.msg.sender;
     bool revert4 = _dst == 0;
 
-    assert(revert1 => lastReverted, "Sending ETH did not revert");
+    assert(revert1 => lastReverted, "Sending COIN did not revert");
     assert(revert2 => lastReverted, "Locked did not revert");
     assert(revert3 => lastReverted, "Only user can move did not revert");
     assert(revert4 => lastReverted, "Zero address invalid did not revert");
@@ -1086,7 +1086,7 @@ rule valid_revert(uint256 _id) {
 
     valid@withrevert(_id);
 
-    // The only revert path for this function is sending ETH.
+    // The only revert path for this function is sending COIN.
     // However as this function is defined as envfree, it is already being checked
     // that is not payable by Certora prover, then not following that revertion
     // path in this rule. That's why it's ignored.

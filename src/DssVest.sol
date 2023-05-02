@@ -27,7 +27,7 @@ interface ChainlogLike {
     function getAddress(bytes32) external view returns (address);
 }
 
-interface DaiJoinLike {
+interface StblJoinLike {
     function exit(address, uint256) external;
 }
 
@@ -428,7 +428,7 @@ contract DssVestSuckable is DssVest {
 
     ChainlogLike public immutable chainlog;
     VatLike      public immutable vat;
-    DaiJoinLike  public immutable daiJoin;
+    StblJoinLike  public immutable stblJoin;
 
     /**
         @dev This contract must be authorized to 'suck' on the vat
@@ -438,20 +438,20 @@ contract DssVestSuckable is DssVest {
         require(_chainlog != address(0), "DssVestSuckable/Invalid-chainlog-address");
         ChainlogLike chainlog_ = chainlog = ChainlogLike(_chainlog);
         VatLike vat_ = vat = VatLike(chainlog_.getAddress("MCD_VAT"));
-        DaiJoinLike daiJoin_ = daiJoin = DaiJoinLike(chainlog_.getAddress("MCD_JOIN_DAI"));
+        StblJoinLike stblJoin_ = stblJoin = StblJoinLike(chainlog_.getAddress("MCD_JOIN_STBL"));
 
-        vat_.hope(address(daiJoin_));
+        vat_.hope(address(stblJoin_));
     }
 
     /**
         @dev Override pay to handle suck logic
-        @param _guy The recipient of the ERC-20 Dai
-        @param _amt The amount of Dai to send to the _guy [WAD]
+        @param _guy The recipient of the ERC-20 Stbl
+        @param _amt The amount of Stbl to send to the _guy [WAD]
     */
     function pay(address _guy, uint256 _amt) override internal {
         require(vat.live() == 1, "DssVestSuckable/vat-not-live");
         vat.suck(chainlog.getAddress("MCD_VOW"), address(this), mul(_amt, RAY));
-        daiJoin.exit(_guy, _amt);
+        stblJoin.exit(_guy, _amt);
     }
 }
 
@@ -479,7 +479,7 @@ contract DssVestTransferrable is DssVest {
 
     /**
         @dev Override pay to handle transfer logic
-        @param _guy The recipient of the ERC-20 Dai
+        @param _guy The recipient of the ERC-20 Stbl
         @param _amt The amount of gem to send to the _guy (in native token units)
     */
     function pay(address _guy, uint256 _amt) override internal {

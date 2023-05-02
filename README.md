@@ -1,6 +1,6 @@
-[![Tests](https://github.com/makerdao/dss-vest/actions/workflows/tests.yml/badge.svg)](https://github.com/makerdao/dss-vest/actions/workflows/tests.yml)
-[![Echidna](https://github.com/makerdao/dss-vest/actions/workflows/echidna.yml/badge.svg)](https://github.com/makerdao/dss-vest/actions/workflows/echidna.yml)
-[![Certora](https://github.com/makerdao/dss-vest/actions/workflows/certora.yml/badge.svg)](https://github.com/makerdao/dss-vest/actions/workflows/certora.yml)
+[![Tests](https://github.com/indefibank/dss-vest/actions/workflows/tests.yml/badge.svg)](https://github.com/indefibank/dss-vest/actions/workflows/tests.yml)
+[![Echidna](https://github.com/indefibank/dss-vest/actions/workflows/echidna.yml/badge.svg)](https://github.com/indefibank/dss-vest/actions/workflows/echidna.yml)
+[![Certora](https://github.com/indefibank/dss-vest/actions/workflows/certora.yml/badge.svg)](https://github.com/indefibank/dss-vest/actions/workflows/certora.yml)
 
 # dss-vest
 
@@ -32,7 +32,7 @@ After deployment, governance must set the `cap` value using the `file` function.
 
 #### DssVestSuckable
 
-Pass the MCD [chainlog](https://github.com/makerdao/dss-chain-log) address to the constructor to set up the contract for scheduled Dai `suck`s. Note: this contract must be given authority to `suck()` Dai from the `vat`'s surplus buffer.
+Pass the MCD [chainlog](https://github.com/indefibank/dss-chain-log) address to the constructor to set up the contract for scheduled Stbl `suck`s. Note: this contract must be given authority to `suck()` Stbl from the `vat`'s surplus buffer.
 
 A `vat.live` check is introduced to disable `vest()` in the event of Emergency Shutdown (aka Global Settlement).
 
@@ -52,7 +52,7 @@ Create a new vesting plan.
 
 - `_usr`: The plan beneficiary
 - `_tot`: The total amount of the vesting plan, in token units
-  - ex. 100 MKR = `100 * 10**18`
+  - ex. 100 GOV = `100 * 10**18`
 - `_bgn`: A unix-timestamp of the plan start date
 - `_tau`: The duration of the vesting plan (in seconds)
 - `_eta`: The cliff period, a duration in seconds from the `_bgn` time, in which tokens are accrued but not payable. (in seconds)

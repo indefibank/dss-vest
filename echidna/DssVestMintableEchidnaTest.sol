@@ -37,7 +37,7 @@ contract DssVestMintableEchidnaTest {
     bytes20 constant CHEAT_CODE = bytes20(uint160(uint256(keccak256("hevm cheat code"))));
 
     constructor() public {
-        gem = new DSToken("MKR");
+        gem = new DSToken("GOV");
         mVest = new DssVestMintable(address(gem));
         mVest.file("cap", MIN * WAD / YEAR);
         gem.setOwner(address(mVest));

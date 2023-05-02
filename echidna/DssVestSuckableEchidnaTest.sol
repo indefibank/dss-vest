@@ -5,8 +5,8 @@ pragma solidity 0.6.12;
 import {DssVest, DssVestSuckable} from "../src/DssVest.sol";
 import        {ChainLog} from "./ChainLog.sol";
 import             {Vat} from "./Vat.sol";
-import         {DaiJoin} from "./DaiJoin.sol";
-import             {Dai} from "./Dai.sol";
+import         {StblJoin} from "./StblJoin.sol";
+import             {StableCoin} from "./StableCoin.sol";
 
 interface Hevm {
     function store(address, bytes32, bytes32) external;
@@ -17,8 +17,8 @@ contract DssVestSuckableEchidnaTest {
 
     ChainLog internal chainlog;
     Vat internal vat;
-    DaiJoin internal daiJoin;
-    Dai internal dai;
+    StblJoin internal stblJoin;
+    StableCoin internal stbl;
     DssVestSuckable internal sVest;
 
     address internal vow = address(0xfffffff);
@@ -49,15 +49,15 @@ contract DssVestSuckableEchidnaTest {
 
     constructor() public {
         vat = new Vat();
-        dai = new Dai(1);
-        daiJoin = new DaiJoin(address(vat), address(dai));
+        stbl = new StableCoin(1);
+        stblJoin = new StblJoin(address(vat), address(stbl));
         chainlog = new ChainLog();
         chainlog.setAddress("MCD_VAT", address(vat));
-        chainlog.setAddress("MCD_JOIN_DAI", address(daiJoin));
+        chainlog.setAddress("MCD_JOIN_STBL", address(stblJoin));
         chainlog.setAddress("MCD_VOW", vow);
         sVest = new DssVestSuckable(address(chainlog));
         sVest.file("cap", MIN * WAD / TIME);
-        dai.rely(address(daiJoin));
+        stbl.rely(address(stblJoin));
         vat.rely(address(sVest));
         salt = block.timestamp;
         hevm = Hevm(address(CHEAT_CODE));
@@ -179,14 +179,14 @@ contract DssVestSuckableEchidnaTest {
         uint256       accruedAmt = accrued(block.timestamp, award.bgn, award.fin, award.tot);
         uint256        unpaidAmt = unpaid(block.timestamp, award.bgn, award.clf, award.fin, award.tot, award.rxd);
         uint256        sinBefore = vat.sin(vow);
-        uint256     supplyBefore = dai.totalSupply();
-        uint256 usrBalanceBefore = dai.balanceOf(award.usr);
+        uint256     supplyBefore = stbl.totalSupply();
+        uint256 usrBalanceBefore = stbl.balanceOf(award.usr);
         try sVest.vest(id) {
             if (block.timestamp < award.clf) {
                 assert(sVest.rxd(id) == award.rxd);
                 assert(vat.sin(vow) == sinBefore);
-                assert(dai.totalSupply() == supplyBefore);
-                assert(dai.balanceOf(award.usr) == usrBalanceBefore);
+                assert(stbl.totalSupply() == supplyBefore);
+                assert(stbl.balanceOf(award.usr) == usrBalanceBefore);
             }
             else {
                 if (block.timestamp >= award.fin) {
@@ -196,8 +196,8 @@ contract DssVestSuckableEchidnaTest {
                     assert(sVest.rxd(id) == toUint128(_add(award.rxd, unpaidAmt)));
                 }
                 assert(vat.sin(vow) == _add(sinBefore, _mul(unpaidAmt, RAY)));
-                assert(dai.totalSupply() == _add(supplyBefore, unpaidAmt));
-                assert(dai.balanceOf(award.usr) == _add(usrBalanceBefore, unpaidAmt));
+                assert(stbl.totalSupply() == _add(supplyBefore, unpaidAmt));
+                assert(stbl.balanceOf(award.usr) == _add(usrBalanceBefore, unpaidAmt));
             }
         } catch Error(string memory errmsg) {
             bytes32 sLocked = hevm.load(address(sVest), bytes32(uint256(4)));      // Load memory slot 0x4
@@ -213,19 +213,19 @@ contract DssVestSuckableEchidnaTest {
                 uint128(award.rxd + unpaidAmt) != (award.rxd + unpaidAmt)          && cmpStr(errmsg, "DssVest/uint128-overflow")     ||
                 vat.live() == 0                                                    && cmpStr(errmsg, "DssVestSuckable/vat-not-live") ||
                 unpaidAmt * RAY / RAY != unpaidAmt                                 && cmpStr(errmsg, "DssVest/mul-overflow")         ||
-                daiJoin.live() == 0                                                && cmpStr(errmsg, "DaiJoin/not-live")             ||
-                vat.can(address(sVest), address(daiJoin)) != 1                     && cmpStr(errmsg, "Vat/not-allowed")
+                stblJoin.live() == 0                                               && cmpStr(errmsg, "StblJoin/not-live")             ||
+                vat.can(address(sVest), address(stblJoin)) != 1                    && cmpStr(errmsg, "Vat/not-allowed")
             );
         } catch {
             assert(
-                vat.dai(vow) - (unpaidAmt * RAY) > (unpaidAmt * RAY)              ||
+                vat.stbl(vow) - (unpaidAmt * RAY) > (unpaidAmt * RAY)              ||
                 vat.vice()   - (unpaidAmt * RAY) > (unpaidAmt * RAY)              ||
                 vat.debt()   - (unpaidAmt * RAY) > (unpaidAmt * RAY)              ||
                 unpaidAmt * ONE / ONE != unpaidAmt                                ||
-                vat.dai(address(sVest)) - (unpaidAmt * ONE) > (unpaidAmt * ONE)   ||
-                vat.dai(address(daiJoin)) + (unpaidAmt * ONE) < (unpaidAmt * ONE) ||
-                dai.balanceOf(award.usr) + unpaidAmt < unpaidAmt                  ||
-                dai.totalSupply() + unpaidAmt < unpaidAmt
+                vat.stbl(address(sVest)) - (unpaidAmt * ONE) > (unpaidAmt * ONE)   ||
+                vat.stbl(address(stblJoin)) + (unpaidAmt * ONE) < (unpaidAmt * ONE) ||
+                stbl.balanceOf(award.usr) + unpaidAmt < unpaidAmt                  ||
+                stbl.totalSupply() + unpaidAmt < unpaidAmt
             );
         }
     }
@@ -247,20 +247,20 @@ contract DssVestSuckableEchidnaTest {
         uint256        unpaidAmt = unpaid(block.timestamp, award.bgn, award.clf, award.fin, award.tot, award.rxd);
         uint256              amt = maxAmt > unpaidAmt ? unpaidAmt : maxAmt;
         uint256        sinBefore = vat.sin(vow);
-        uint256     supplyBefore = dai.totalSupply();
-        uint256 usrBalanceBefore = dai.balanceOf(award.usr);
+        uint256     supplyBefore = stbl.totalSupply();
+        uint256 usrBalanceBefore = stbl.balanceOf(award.usr);
         try sVest.vest(id, maxAmt) {
             if (block.timestamp < award.clf) {
                 assert(sVest.rxd(id) == award.rxd);
                 assert(vat.sin(vow) == sinBefore);
-                assert(dai.totalSupply() == supplyBefore);
-                assert(dai.balanceOf(award.usr) == usrBalanceBefore);
+                assert(stbl.totalSupply() == supplyBefore);
+                assert(stbl.balanceOf(award.usr) == usrBalanceBefore);
             }
             else {
                 assert(sVest.rxd(id) == toUint128(_add(award.rxd, amt)));
                 assert(vat.sin(vow) == _add(sinBefore, _mul(amt, RAY)));
-                assert(dai.totalSupply() == _add(supplyBefore, amt));
-                assert(dai.balanceOf(award.usr) == _add(usrBalanceBefore, amt));
+                assert(stbl.totalSupply() == _add(supplyBefore, amt));
+                assert(stbl.balanceOf(award.usr) == _add(usrBalanceBefore, amt));
             }
         } catch Error(string memory errmsg) {
             bytes32 sLocked = hevm.load(address(sVest), bytes32(uint256(4)));      // Load memory slot 0x4
@@ -276,19 +276,19 @@ contract DssVestSuckableEchidnaTest {
                 uint128(award.rxd + amt) != (award.rxd + amt)                      && cmpStr(errmsg, "DssVest/uint128-overflow")     ||
                 vat.live() == 0                                                    && cmpStr(errmsg, "DssVestSuckable/vat-not-live") ||
                 amt * RAY / RAY != amt                                             && cmpStr(errmsg, "DssVest/mul-overflow")         ||
-                daiJoin.live() == 0                                                && cmpStr(errmsg, "DaiJoin/not-live")             ||
-                vat.can(address(sVest), address(daiJoin)) != 1                     && cmpStr(errmsg, "Vat/not-allowed")
+                stblJoin.live() == 0                                               && cmpStr(errmsg, "StblJoin/not-live")             ||
+                vat.can(address(sVest), address(stblJoin)) != 1                    && cmpStr(errmsg, "Vat/not-allowed")
             );
         } catch {
             assert(
-                vat.dai(vow) - (amt * RAY) > (amt * RAY)              ||
+                vat.stbl(vow) - (amt * RAY) > (amt * RAY)              ||
                 vat.vice()   - (amt * RAY) > (amt * RAY)              ||
                 vat.debt()   - (amt * RAY) > (amt * RAY)              ||
                 amt * ONE / ONE != amt                                ||
-                vat.dai(address(sVest)) - (amt * ONE) > (amt * ONE)   ||
-                vat.dai(address(daiJoin)) + (amt * ONE) < (amt * ONE) ||
-                dai.balanceOf(award.usr) + amt < amt                  ||
-                dai.totalSupply() + amt < amt
+                vat.stbl(address(sVest)) - (amt * ONE) > (amt * ONE)   ||
+                vat.stbl(address(stblJoin)) + (amt * ONE) < (amt * ONE) ||
+                stbl.balanceOf(award.usr) + amt < amt                  ||
+                stbl.totalSupply() + amt < amt
             );
         }
     }

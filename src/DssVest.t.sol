@@ -26,7 +26,7 @@ interface GemLike {
     function approve(address, uint256) external returns (bool);
 }
 
-interface DaiLike is GemLike {
+interface StblLike is GemLike {
     function balanceOf(address) external returns (uint256);
 }
 
@@ -34,7 +34,7 @@ interface DSTokenLike {
     function balanceOf(address) external returns (uint256);
 }
 
-interface MkrAuthorityLike {
+interface GovAuthorityLike {
     function wards(address) external returns (uint256);
 }
 
@@ -95,9 +95,9 @@ contract DssVestTest is DSTest {
 
     ChainlogLike          chainlog;
     DSTokenLike                gem;
-    MkrAuthorityLike     authority;
+    GovAuthorityLike     authority;
     VatLike                    vat;
-    DaiLike                    dai;
+    StblLike                    stbl;
     EndLike                    end;
 
     address                    VOW;
@@ -107,9 +107,9 @@ contract DssVestTest is DSTest {
 
          chainlog = ChainlogLike(0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F);
               gem = DSTokenLike    (      chainlog.getAddress("MCD_GOV"));
-        authority = MkrAuthorityLike(     chainlog.getAddress("GOV_GUARD"));
+        authority = GovAuthorityLike(     chainlog.getAddress("GOV_GUARD"));
               vat = VatLike(              chainlog.getAddress("MCD_VAT"));
-              dai = DaiLike(              chainlog.getAddress("MCD_DAI"));
+              stbl = StblLike(              chainlog.getAddress("MCD_STBL"));
               end = EndLike(              chainlog.getAddress("MCD_END"));
               VOW =                       chainlog.getAddress("MCD_VOW");
 
@@ -118,12 +118,12 @@ contract DssVestTest is DSTest {
         sVest = new DssVestSuckable(address(chainlog));
         sVest.file("cap", (2000 * WAD) / (4 * 365 days));
         boss = new Manager();
-        tVest = new DssVestTransferrable(address(boss), address(dai));
+        tVest = new DssVestTransferrable(address(boss), address(stbl));
         tVest.file("cap", (2000 * WAD) / (4 * 365 days));
-        boss.gemApprove(address(dai), address(tVest));
+        boss.gemApprove(address(stbl), address(tVest));
 
 
-        // Set testing contract as a MKR Auth
+        // Set testing contract as a GOV Auth
         hevm.store(
             address(authority),
             keccak256(abi.encode(address(mVest), uint256(1))),
@@ -139,13 +139,13 @@ contract DssVestTest is DSTest {
         );
         assertEq(vat.wards(address(sVest)), 1);
 
-        // Give boss 10000 DAI
+        // Give boss 10000 STBL
         hevm.store(
-            address(dai),
+            address(stbl),
             keccak256(abi.encode(address(boss), uint(2))),
             bytes32(uint256(10000 * WAD))
         );
-        assertEq(dai.balanceOf(address(boss)), 10000 * WAD);
+        assertEq(stbl.balanceOf(address(boss)), 10000 * WAD);
     }
 
     function testCost() public {
@@ -658,15 +658,15 @@ contract DssVestTest is DSTest {
         assertTrue(sVest.valid(id));
         hevm.warp(block.timestamp + 1 days);
         sVest.vest(id);
-        assertEq(dai.balanceOf(address(this)), 1 * days_vest);
+        assertEq(stbl.balanceOf(address(this)), 1 * days_vest);
         assertEq(vat.sin(VOW), originalSin + 1 * days_vest * RAY);
         hevm.warp(block.timestamp + 9 days);
         sVest.vest(id);
-        assertEq(dai.balanceOf(address(this)), 10 * days_vest);
+        assertEq(stbl.balanceOf(address(this)), 10 * days_vest);
         assertEq(vat.sin(VOW), originalSin + 10 * days_vest * RAY);
         hevm.warp(block.timestamp + 365 days);
         sVest.vest(id);
-        assertEq(dai.balanceOf(address(this)), 100 * days_vest);
+        assertEq(stbl.balanceOf(address(this)), 100 * days_vest);
         assertEq(vat.sin(VOW), originalSin + 100 * days_vest * RAY);
     }
 
@@ -677,7 +677,7 @@ contract DssVestTest is DSTest {
 
         hevm.warp(block.timestamp + 1 days);
         sVest.vest(id);
-        assertEq(dai.balanceOf(address(this)), 1 * days_vest);
+        assertEq(stbl.balanceOf(address(this)), 1 * days_vest);
         assertEq(vat.sin(VOW), originalSin + 1 * days_vest * RAY);
 
         hevm.warp(block.timestamp + 9 days);
@@ -696,7 +696,7 @@ contract DssVestTest is DSTest {
             assertTrue(false);
         } catch Error(string memory errmsg) {
             assertTrue(vat.live() == 0 && cmpStr(errmsg, "DssVestSuckable/vat-not-live"));
-            assertEq(dai.balanceOf(address(this)), 1 * days_vest);
+            assertEq(stbl.balanceOf(address(this)), 1 * days_vest);
             assertEq(vat.sin(VOW), 0); // true only if there is more surplus than debt in the system
         } catch {
             assertTrue(false);
@@ -822,20 +822,20 @@ contract DssVestTest is DSTest {
         assertTrue(tVest.valid(id));
         hevm.warp(block.timestamp + 1 days);
         tVest.vest(id);
-        assertEq(dai.balanceOf(address(usr)), 1 * days_vest);
-        assertEq(dai.balanceOf(address(boss)), 10000 * WAD - 1 * days_vest);
+        assertEq(stbl.balanceOf(address(usr)), 1 * days_vest);
+        assertEq(stbl.balanceOf(address(boss)), 10000 * WAD - 1 * days_vest);
         hevm.warp(block.timestamp + 9 days);
         tVest.vest(id);
-        assertEq(dai.balanceOf(address(usr)), 10 * days_vest);
-        assertEq(dai.balanceOf(address(boss)), 10000 * WAD - 10 * days_vest);
+        assertEq(stbl.balanceOf(address(usr)), 10 * days_vest);
+        assertEq(stbl.balanceOf(address(boss)), 10000 * WAD - 10 * days_vest);
         hevm.warp(block.timestamp + 365 days);
         tVest.vest(id);
-        assertEq(dai.balanceOf(address(usr)), 100 * days_vest);
-        assertEq(dai.balanceOf(address(boss)), 10000 * WAD - 100 * days_vest);
+        assertEq(stbl.balanceOf(address(usr)), 100 * days_vest);
+        assertEq(stbl.balanceOf(address(boss)), 10000 * WAD - 100 * days_vest);
         hevm.warp(block.timestamp + 365 days);
         tVest.vest(id);
-        assertEq(dai.balanceOf(address(usr)), 100 * days_vest);
-        assertEq(dai.balanceOf(address(boss)), 10000 * WAD - 100 * days_vest);
+        assertEq(stbl.balanceOf(address(usr)), 100 * days_vest);
+        assertEq(stbl.balanceOf(address(boss)), 10000 * WAD - 100 * days_vest);
     }
 
     function testWardsSlot0x0() public {
