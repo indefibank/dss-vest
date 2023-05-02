@@ -38,6 +38,8 @@ contract StableCoin {
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
 
+    uint256 public chainId;
+
     mapping (address => uint)                      public balanceOf;
     mapping (address => mapping (address => uint)) public allowance;
     mapping (address => uint)                      public nonces;
@@ -60,6 +62,7 @@ contract StableCoin {
 
     constructor(uint256 chainId_) public {
         wards[msg.sender] = 1;
+        chainId = chainId_;
         DOMAIN_SEPARATOR = keccak256(abi.encode(
             keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
             keccak256(bytes(name)),
